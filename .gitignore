@@ -1,0 +1,7 @@
+/first.txt
+/token.txt
+/weather.db
+/run_async
+/config.yml
+__pycache__/
+*.py[cod]
