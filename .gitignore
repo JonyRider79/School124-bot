@@ -5,3 +5,5 @@
 /config.yml
 __pycache__/
 *.py[cod]
+venv/
+/School124.py
