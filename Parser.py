@@ -11,7 +11,7 @@ import aiohttp
 import asyncio
 from bs4 import BeautifulSoup
 import pandas as pd
-
+from datetime import date
 
 # создаем основную функцию
 async def main():
@@ -48,12 +48,39 @@ async def main():
                     row[13] = "\xa0"
                 mydata.loc[len(mydata)] = row
                 #print(mydata)
-            mydata.to_csv("raspisanie.csv", index=False)
-            mydata.to_sql("main_shedule", con=sqlite3.connect("School124.db"), if_exists='replace')
+            # mydata.to_csv("raspisanie.csv", index=False)
+            # mydata.to_sql("main_shedule", con=sqlite3.connect("School124.db"), if_exists='replace')
+            # df_new = mydata[mydata['День недели'] == 'Понедельник']
+            # print(df_new)
+            # df_new1 = df_new[["Урок",'6б']]
+            # print(df_new1)
+            days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
+            my_date = date.today()
+            if date.weekday(my_date) == 5:
+                day1 = days[5]
+                day2 = days[0]
+            elif date.weekday(my_date) == 6:
+                day1 = days[0]
+                day2 = days[1]
+            else:
+                day1 = days[date.weekday(my_date)]
+                day2 = days[date.weekday(my_date)+1]
+
+            #print(day1, day2)
+
+
+            mydata.set_index("День недели", inplace=True)
+            df_today = mydata.loc[[day1],["Урок",'6б']]
+            df_tomorrov = mydata.loc[[day2],["Урок",'6б']]
+            # print(df_new3)
+            str_today = day1+"\n"+df_today.to_string(index=False)+"\n\n"+day2+"\n"+df_tomorrov.to_string(index=False)
+
+            print(str_today)
 
             # for tag in soup.find_all("td"):
             #    print(tag.text)
             # print(soup.td.text)
+
 
 
 loop = asyncio.get_event_loop()
