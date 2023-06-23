@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import date
 import sqlite3
+import aiosqlite
 
 with open('config.yml') as fh:
     dictionary_data = yaml.safe_load(fh)
@@ -21,6 +22,12 @@ days = ["Понедельник", "Вторник", "Среда", "Четвер�
 # main_shedule = pd.DataFrame()
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
+
+
+async def create_table():
+    async with aiosqlite.connect('School124.db') as db:
+        await db.execute('CREATE TABLE IF NOT EXISTS users (id text UNIQUE, name text, klass text)')
+        await db.commit()
 
 
 async def get_main_shedule():
@@ -56,6 +63,20 @@ async def get_main_shedule():
         # return main_shedule
 
 
+async def registr_user_db(user_id, user, klass):
+    # Тут будет запись в базу данных ID пользователя и выбранный класс
+    async with aiosqlite.connect('School124.db') as db:
+        await db.execute('INSERT INTO users VALUES (?, ?, ?) ON CONFLICT(id)'
+                         'DO UPDATE SET klass=?', (user_id, user, klass, klass))
+        await db.commit()
+
+
+async def find_user_db():
+    # Тут будет поиск класса у зарегистрированного пользователя
+    klass = "6б"
+    return klass
+
+
 @dp.callback_query_handler(lambda c: c.data == 'button1')
 async def process_callback_button1(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id)
@@ -80,7 +101,8 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith(('5', '6', '7', '8', '9', '10', '11')))
 async def process_callback_kb_klass(callback_query: types.CallbackQuery):
-    await bot.answer_callback_query(callback_query.id, text=f'Выбран класс {callback_query.data}', show_alert=True)
+    await registr_user_db(callback_query.from_user.id, callback_query.from_user.first_name, callback_query.data)
+    await bot.answer_callback_query(callback_query.id, text=f'Выбран класс {callback_query.data}')  # , show_alert=True)
     await bot.send_message(
         callback_query.from_user.id, f'Теперь доступно расписание для класса {callback_query.data} по команде /shedule')
 
@@ -107,6 +129,9 @@ async def process_command_2(message: types.Message):
 
 @dp.message_handler(commands=['shedule'])
 async def raspis_from_main_shedule(message: types.Message):
+    # узнаем какой класс нужно выбрать
+    user_klass = await find_user_db()
+    print(user_klass)
     # Узнаем текущий день недели и выводим расписание на два рабочих дня
     my_date = date.today()
     if date.weekday(my_date) == 5:
@@ -119,8 +144,8 @@ async def raspis_from_main_shedule(message: types.Message):
         day1 = days[date.weekday(my_date)]
         day2 = days[date.weekday(my_date) + 1]
 
-    df_today = main_shedule.loc[[day1], ["Урок", '6б']]
-    df_tomorrov = main_shedule.loc[[day2], ["Урок", '6б']]
+    df_today = main_shedule.loc[[day1], ["Урок", user_klass]]
+    df_tomorrov = main_shedule.loc[[day2], ["Урок", user_klass]]
     str_today = day1 + "\n" + df_today.to_string(index=False) + "\n\n" + day2 + "\n" + df_tomorrov.to_string(
         index=False)
     await message.answer(str_today)
@@ -133,6 +158,7 @@ async def echo_message(msg: types.Message):
 
 
 async def main():
+    await create_table()
     await get_main_shedule()
     await dp.start_polling(bot)
     # executor.start_polling(dp)
