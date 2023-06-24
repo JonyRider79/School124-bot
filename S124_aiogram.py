@@ -64,17 +64,20 @@ async def get_main_shedule():
 
 
 async def registr_user_db(user_id, user, klass):
-    # Тут будет запись в базу данных ID пользователя и выбранный класс
+    # Запись в базу данных ID, имя пользователя и выбранный класс
     async with aiosqlite.connect('School124.db') as db:
         await db.execute('INSERT INTO users VALUES (?, ?, ?) ON CONFLICT(id)'
                          'DO UPDATE SET klass=?', (user_id, user, klass, klass))
         await db.commit()
 
 
-async def find_user_db():
-    # Тут будет поиск класса у зарегистрированного пользователя
-    klass = "6б"
-    return klass
+async def find_user_db(user_id):
+    # Поиск класса у зарегистрированного пользователя
+    async with aiosqlite.connect('School124.db') as db:
+        cursor = await db.execute('SELECT klass FROM users WHERE id = '+str(user_id))
+        row = await cursor.fetchone()
+        klass = row[0]
+        return klass
 
 
 @dp.callback_query_handler(lambda c: c.data == 'button1')
@@ -130,7 +133,7 @@ async def process_command_2(message: types.Message):
 @dp.message_handler(commands=['shedule'])
 async def raspis_from_main_shedule(message: types.Message):
     # узнаем какой класс нужно выбрать
-    user_klass = await find_user_db()
+    user_klass = await find_user_db(message.from_user.id)
     print(user_klass)
     # Узнаем текущий день недели и выводим расписание на два рабочих дня
     my_date = date.today()
