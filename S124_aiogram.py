@@ -40,7 +40,7 @@ async def get_main_shedule():
             head = soup.find("tr")
             headers = ["День недели", "Урок"]
             for i in head.find_all("td")[2:]:
-                headers.append(i.text)
+                headers.append(i.text.split('\n')[0])
             global main_shedule
             main_shedule = pd.DataFrame(columns=headers)
             # Create a for loop to fill mydata
@@ -76,7 +76,10 @@ async def find_user_db(user_id):
     async with aiosqlite.connect('School124.db') as db:
         cursor = await db.execute('SELECT klass FROM users WHERE id = '+str(user_id))
         row = await cursor.fetchone()
-        klass = row[0]
+        if row is None:
+            klass = "None"
+        else:
+            klass = row[0]
         return klass
 
 
@@ -134,30 +137,32 @@ async def process_command_2(message: types.Message):
 async def raspis_from_main_shedule(message: types.Message):
     # узнаем какой класс нужно выбрать
     user_klass = await find_user_db(message.from_user.id)
-    print(user_klass)
-    # Узнаем текущий день недели и выводим расписание на два рабочих дня
-    my_date = date.today()
-    if date.weekday(my_date) == 5:
-        day1 = days[5]
-        day2 = days[0]
-    elif date.weekday(my_date) == 6:
-        day1 = days[0]
-        day2 = days[1]
+    if user_klass == "None":
+        await message.answer("Вначале нужно выбрать класс командой /start")
     else:
-        day1 = days[date.weekday(my_date)]
-        day2 = days[date.weekday(my_date) + 1]
+        # Узнаем текущий день недели и выводим расписание на два рабочих дня
+        my_date = date.today()
+        if date.weekday(my_date) == 5:
+            day1 = days[5]
+            day2 = days[0]
+        elif date.weekday(my_date) == 6:
+            day1 = days[0]
+            day2 = days[1]
+        else:
+            day1 = days[date.weekday(my_date)]
+            day2 = days[date.weekday(my_date) + 1]
 
-    df_today = main_shedule.loc[[day1], ["Урок", user_klass]]
-    df_tomorrov = main_shedule.loc[[day2], ["Урок", user_klass]]
-    str_today = day1 + "\n" + df_today.to_string(index=False) + "\n\n" + day2 + "\n" + df_tomorrov.to_string(
-        index=False)
-    await message.answer(str_today)
+        df_today = main_shedule.loc[[day1], ["Урок", user_klass]]
+        df_tomorrov = main_shedule.loc[[day2], ["Урок", user_klass]]
+        str_today = day1 + "\n" + df_today.to_string(index=False) + "\n\n" + day2 + "\n" + df_tomorrov.to_string(
+            index=False)
+        await message.answer(str_today)
 
 
 @dp.message_handler()
 async def echo_message(msg: types.Message):
     # await bot.send_message(msg.from_user.id, msg.text)
-    await msg.answer(msg.text)
+    await msg.reply("Для отслеживания расписания нужно выбрать класс /start и запросить расписание /shedule")
 
 
 async def main():
