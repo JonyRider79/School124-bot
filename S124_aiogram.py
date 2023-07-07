@@ -15,12 +15,14 @@ with open('config.yml') as fh:
     dictionary_data = yaml.safe_load(fh)
 TOKEN = dictionary_data['TOKEN']
 URL_SHEDULE = dictionary_data['URL_SHEDULE']
+PROXY = dictionary_data['PROXY']
 
 logging.basicConfig(level=logging.INFO)
 
 days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 # main_shedule = pd.DataFrame()
-bot = Bot(token=TOKEN)
+session_bot = aiohttp.ClientSession()
+bot = Bot(token=TOKEN, proxy=PROXY)
 dp = Dispatcher(bot)
 
 
@@ -34,7 +36,7 @@ async def get_main_shedule():
     # Парсим основное расписание с сайта
     async with aiohttp.ClientSession() as session:
         # делаем GET-запрос
-        async with session.get(URL_SHEDULE) as response:  # расписание
+        async with session.get(URL_SHEDULE, proxy=PROXY) as response:  # расписание
             # создаем переменную с ответом сервера
             soup = BeautifulSoup(await response.text(), "lxml")
             head = soup.find("tr")
